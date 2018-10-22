@@ -1,6 +1,17 @@
+import shutil
+import torch
+import sys
+import os
+from config import config
+
+def save_checkpoint(state, is_best,fold):
+    filename = config.weights + config.model_name + os.sep +str(fold) + os.sep + "_checkpoint.pth.tar"
+    torch.save(state, filename)
+    if is_best:
+        shutil.copyfile(filename, config.best_models + config.model_name+ os.sep +str(fold)  + os.sep + 'model_best.pth.tar')
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
-
     def __init__(self):
         self.reset()
 
@@ -16,20 +27,79 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+def adjust_learning_rate(optimizer, epoch):
+    """Sets the learning rate to the initial LR decayed by 10 every 3 epochs"""
+    lr = config.lr * (0.1 ** (epoch // 3))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
-def accuracy(y_pred, y_actual, topk=(1, )):
-    """Computes the precision@k for the specified values of k"""
-    maxk = max(topk)
-    batch_size = y_actual.size(0)
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
 
-    _, pred = y_pred.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(y_actual.view(1, -1).expand_as(pred))
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
 
-    res = []
-    for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0)
-        res.append(correct_k.mul_(100.0 / batch_size))
+        res = []
+        for k in topk:
+            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
 
-    return res
+class Logger(object):
+    def __init__(self):
+        self.terminal = sys.stdout  #stdout
+        self.file = None
 
+    def open(self, file, mode=None):
+        if mode is None: mode ='w'
+        self.file = open(file, mode)
+
+    def write(self, message, is_terminal=1, is_file=1 ):
+        if '\r' in message: is_file=0
+
+        if is_terminal == 1:
+            self.terminal.write(message)
+            self.terminal.flush()
+            #time.sleep(1)
+
+        if is_file == 1:
+            self.file.write(message)
+            self.file.flush()
+
+    def flush(self):
+        # this flush method is needed for python 3 compatibility.
+        # this handles the flush command by doing nothing.
+        # you might want to specify some extra behavior here.
+        pass
+
+def get_learning_rate(optimizer):
+    lr=[]
+    for param_group in optimizer.param_groups:
+       lr +=[ param_group['lr'] ]
+
+    assert(len(lr)==1) #we support only one param_group
+    lr = lr[0]
+
+    return lr
+
+
+def time_to_str(t, mode='min'):
+    if mode=='min':
+        t  = int(t)/60
+        hr = t//60
+        min = t%60
+        return '%2d hr %02d min'%(hr,min)
+
+    elif mode=='sec':
+        t   = int(t)
+        min = t//60
+        sec = t%60
+        return '%2d min %02d sec'%(min,sec)
+
+
+    else:
+        raise NotImplementedError
