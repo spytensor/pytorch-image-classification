@@ -1,4 +1,7 @@
 # pytorch-image-classification
+
+version 0.1.1
+
 `pytorch 0.4.0`
 
 利用pytorch进行图像分类
