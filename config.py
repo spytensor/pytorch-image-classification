@@ -1,8 +1,8 @@
 class DefaultConfigs(object):
     #1.string parameters
-    train_data = "../data/train/"
+    train_data = "/home/user/zcj/tutorials/data/train/"
     test_data = ""
-    val_data = "../data/val/"
+    val_data = "/home/user/zcj/tutorials/data/val/"
     model_name = "resnet50"
     weights = "./checkpoints/"
     best_models = weights + "best_model/"
@@ -12,12 +12,12 @@ class DefaultConfigs(object):
 
     #2.numeric parameters
     epochs = 40
-    batch_size = 4
-    img_height = 224
-    img_weight = 224
+    batch_size = 16
+    img_height = 300
+    img_weight = 300
     num_classes = 62
     seed = 888
-    lr = 1e-3
+    lr = 1e-4
     lr_decay = 1e-4
     weight_decay = 1e-4
 

@@ -34,34 +34,39 @@ class ChaojieDataset(Dataset):
                 imgs.append((row["filename"],row["label"]))
             self.imgs = imgs
         if transforms is None:
-            if self.test or not train:
-                self.transforms = Compose([
-                    Resize((config.img_weight,config.img_height)),
-                    Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-                ])
+            if self.test or not self.train:
+                self.transforms = T.Compose([
+                    T.Resize((config.img_weight,config.img_height)),
+                    T.ToTensor(),
+                    T.Normalize(mean = [0.485,0.456,0.406],
+                                std = [0.229,0.224,0.225])])
             else:
-                self.transforms = Compose([
-                    Resize((config.img_weight,config.img_height)),
-                    FixRandomRotate(bound='Random'),
-                    RandomHflip(),
-                    RandomVflip(),
-                    Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-                ])
+                self.transforms  = T.Compose([
+                    T.Resize((config.img_weight,config.img_height)),
+                    T.RandomRotation(30),
+                    T.RandomHorizontalFlip(),
+                    T.RandomVerticalFlip(),
+                    T.RandomAffine(45),
+                    T.ToTensor(),
+                    T.Normalize(mean = [0.485,0.456,0.406],
+                                std = [0.229,0.224,0.225])])
         else:
             self.transforms = transforms
     def __getitem__(self,index):
         if self.test:
             filename = self.imgs[index]
-            img = cv2.imread(filename)
-            img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            #img = cv2.imread(filename)
+            #img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            img = Image.open(filename)
             img = self.transforms(img)
-            return torch.from_numpy(img).float(),filename
+            return img,filename
         else:
             filename,label = self.imgs[index] 
-            img = cv2.imread(filename)
-            img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            #img = cv2.imread(filename)
+            #img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            img = Image.open(filename)
             img = self.transforms(img)
-            return torch.from_numpy(img).float(),label
+            return img,label
     def __len__(self):
         return len(self.imgs)
 
@@ -87,7 +92,7 @@ def get_files(root,mode):
         #for train and val       
         all_data_path,labels = [],[]
         image_folders = list(map(lambda x:root+x,os.listdir(root)))
-        all_images = list(chain.from_iterable(list(map(lambda x:glob(x+"/*.png"),image_folders))))
+        all_images = list(chain.from_iterable(list(map(lambda x:glob(x+"/*"),image_folders))))
         print("loading train dataset")
         for file in tqdm(all_images):
             all_data_path.append(file)

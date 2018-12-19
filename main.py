@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split,StratifiedKFold
 from timeit import default_timer as timer
 from models.model import *
 from utils import *
-
+from IPython import embed
 #1. set random.seed and cudnn performance
 random.seed(config.seed)
 np.random.seed(config.seed)
@@ -29,19 +29,21 @@ torch.backends.cudnn.benchmark = True
 warnings.filterwarnings('ignore')
 
 #2. evaluate func
-def evaluate(val_loader,model,criterion):
+def evaluate(val_loader,model,criterion,epoch):
     #2.1 define meters
     losses = AverageMeter()
     top1 = AverageMeter()
-    top2 = AverageMeter()
+    #progress bar
+    val_progressor = ProgressBar(mode="Val  ",epoch=epoch,total_epoch=config.epochs,model_name=config.model_name,total=len(val_loader))
     #2.2 switch to evaluate mode and confirm model has been transfered to cuda
     model.cuda()
-    model.eval()
+    #model.eval()
     with torch.no_grad():
         for i,(input,target) in enumerate(val_loader):
+            val_progressor.current = i 
             input = Variable(input).cuda()
             target = Variable(torch.from_numpy(np.array(target)).long()).cuda()
-
+            #target = Variable(target).cuda()
             #2.2.1 compute output
             output = model(input)
             loss = criterion(output,target)
@@ -50,9 +52,11 @@ def evaluate(val_loader,model,criterion):
             precision1,precision2 = accuracy(output,target,topk=(1,2))
             losses.update(loss.item(),input.size(0))
             top1.update(precision1[0],input.size(0))
-            top2.update(precision2[0],input.size(0))
-
-    return [losses.avg,top1.avg,top2.avg]
+            val_progressor.current_loss = losses.avg
+            val_progressor.current_top1 = top1.avg
+            val_progressor()
+        val_progressor.done()
+    return [losses.avg,top1.avg]
 
 #3. test model on public dataset and save the probability matrix
 def test(test_loader,model,folds):
@@ -99,17 +103,16 @@ def main():
         os.makedirs(config.best_models + config.model_name + os.sep +str(fold) + os.sep)       
     #4.2 get model and optimizer
     model = get_net()
-    model = torch.nn.DataParallel(model)
+    #model = torch.nn.DataParallel(model)
     model.cuda()
-    optimizer = optim.SGD(model.parameters(),lr = config.lr,momentum=0.9,weight_decay=config.weight_decay)
-    #optimizer = optim.Adam(model.parameters(),lr = config.lr,amsgrad=True,weight_decay=config.weight_decay)
+
+    #optimizer = optim.SGD(model.parameters(),lr = config.lr,momentum=0.9,weight_decay=config.weight_decay)
+    optimizer = optim.Adam(model.parameters(),lr = config.lr,amsgrad=True,weight_decay=config.weight_decay)
     criterion = nn.CrossEntropyLoss().cuda()
-    log = Logger()
-    log.open(config.logs + "log_train.txt",mode="a")
-    log.write("\n------------------------------------ [START %s] %s\n\n" % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '-' * 40))
     #4.3 some parameters for  K-fold and restart model
     start_epoch = 0
     best_precision1 = 0
+    best_precision_save = 0
     resume = False
     
     #4.4 restart the training process
@@ -144,33 +147,52 @@ def main():
     val_dataloader = DataLoader(ChaojieDataset(val_data_list,train=False),batch_size=config.batch_size * 2,shuffle=True,collate_fn=collate_fn,pin_memory=False)
     #test_dataloader = DataLoader(ChaojieDataset(test_files,test=True),batch_size=1,shuffle=False,pin_memory=False)
     #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,"max",verbose=1,patience=3)
-    scheduler =  optim.lr_scheduler.StepLR(optimizer,step_size = 5,gamma=0.1)
+    scheduler =  optim.lr_scheduler.StepLR(optimizer,step_size = 10,gamma=0.1)
     #4.5.5.1 define metrics
     train_losses = AverageMeter()
     train_top1 = AverageMeter()
-    train_top2 = AverageMeter()
     valid_loss = [np.inf,0,0]
     model.train()
 
-    #logs
-    log.write('** start training here! **\n')
-    log.write('                               |------------ VALID -------------|----------- TRAIN -------------|         \n')
-    log.write('lr           iter     epoch    | loss   top-1  top-2            | loss   top-1  top-2           |  time   \n')
-    log.write('----------------------------------------------------------------------------------------------------\n')
     #4.5.5 train
     start = timer()
     for epoch in range(start_epoch,config.epochs):
         scheduler.step(epoch)
-        #4.5.5.2 train
+        train_progressor = ProgressBar(mode="Train",epoch=epoch,total_epoch=config.epochs,model_name=config.model_name,total=len(train_dataloader))
+        # train
+        #global iter
         for iter,(input,target) in enumerate(train_dataloader):
+            #4.5.5 switch to continue train process
+            train_progressor.current = iter
+            model.train()
+            input = Variable(input).cuda()
+            target = Variable(torch.from_numpy(np.array(target)).long()).cuda()
+            #target = Variable(target).cuda()
+            output = model(input)
+            loss = criterion(output,target)
 
-            lr = get_learning_rate(optimizer)
-            #evaluate every half epoch
-            if iter == len(train_dataloader) // 2:
-                valid_loss = evaluate(val_dataloader,model,criterion)
-                is_best = valid_loss[1] > best_precision1
-                best_precision1 = max(valid_loss[1],best_precision1)
-                save_checkpoint({
+            precision1_train,precision2_train = accuracy(output,target,topk=(1,2))
+            train_losses.update(loss.item(),input.size(0))
+            train_top1.update(precision1_train[0],input.size(0))
+            train_progressor.current_loss = train_losses.avg
+            train_progressor.current_top1 = train_top1.avg
+            #backward
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            train_progressor()
+        train_progressor.done()
+        #evaluate
+        lr = get_learning_rate(optimizer)
+        #evaluate every half epoch
+        valid_loss = evaluate(val_dataloader,model,criterion,epoch)
+        is_best = valid_loss[1] > best_precision1
+        best_precision1 = max(valid_loss[1],best_precision1)
+        try:
+            best_precision_save = best_precision1.cpu().data.numpy()
+        except:
+            pass
+        save_checkpoint({
                     "epoch":epoch + 1,
                     "model_name":config.model_name,
                     "state_dict":model.state_dict(),
@@ -178,46 +200,11 @@ def main():
                     "optimizer":optimizer.state_dict(),
                     "fold":fold,
                     "valid_loss":valid_loss,
-                },is_best,fold)
-                #adjust learning rate
-                #scheduler.step(valid_loss[1])
-                print("\r",end="",flush=True)
-                log.write('%0.8f %5.1f   %6.1f      | %0.3f  %0.3f  %0.3f        | %0.3f  %0.3f  %0.3f        | %s' % (\
-                        lr, iter/len(train_dataloader) + epoch, epoch,
-                        valid_loss[0], valid_loss[1], valid_loss[2],
-                        train_losses.avg,    train_top1.avg,    train_top2.avg, 
-                        time_to_str((timer() - start),'min'))
-                )
-                log.write('\n')
-                time.sleep(0.01)
-
-            #4.5.5 switch to continue train process
-            #scheduler.step(epoch)
-            model.train()
-            input = Variable(input).cuda()
-            target = Variable(torch.from_numpy(np.array(target)).long()).cuda()
-            output = model(input)
-            loss = criterion(output,target)
-
-            precision1_train,precision2_train = accuracy(output,target,topk=(1,2))
-            train_losses.update(loss.item(),input.size(0))
-            train_top1.update(precision1_train[0],input.size(0))
-            train_top2.update(precision2_train[0],input.size(0))
-            #backward
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            lr = get_learning_rate(optimizer)
-            print('\r',end='',flush=True)
-            print('%0.8f %5.1f   %6.1f      | %0.3f  %0.3f  %0.3f       | %0.3f  %0.3f  %0.3f        | %s' % (\
-                         lr, iter/len(train_dataloader) + epoch, epoch,
-                         valid_loss[0], valid_loss[1], valid_loss[2],
-                         train_losses.avg, train_top1.avg, train_top2.avg,
-                         time_to_str((timer() - start),'min'))
-            , end='',flush=True)
-    # best_model = torch.load(config.best_models + os.sep+ str(fold) + 'model_best.pth.tar')
-    # model.load_state_dict(best_model["state_dict"])
-    # test(test_dataloader,model,fold)
+        },is_best,fold)
+    
+    best_model = torch.load(config.best_models + os.sep+ str(fold) + 'model_best.pth.tar')
+    model.load_state_dict(best_model["state_dict"])
+    test(test_dataloader,model,fold)
 
 if __name__ =="__main__":
     main()
