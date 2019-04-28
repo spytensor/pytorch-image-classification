@@ -1,6 +1,9 @@
 # pytorch-image-classification
 use pytorch to do image classfiication tasks 
 
+## 2019.04.28
+add test.py
+
 #### version0.2.0
 
 **更新**

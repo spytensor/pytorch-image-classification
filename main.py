@@ -201,10 +201,6 @@ def main():
                     "fold":fold,
                     "valid_loss":valid_loss,
         },is_best,fold)
-    
-    best_model = torch.load(config.best_models + os.sep+ str(fold) + 'model_best.pth.tar')
-    model.load_state_dict(best_model["state_dict"])
-    test(test_dataloader,model,fold)
 
 if __name__ =="__main__":
     main()
