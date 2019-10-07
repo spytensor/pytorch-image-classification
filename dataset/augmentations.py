@@ -6,6 +6,8 @@ import cv2
 import numpy as np
 from albumentations.augmentations.functional import brightness_contrast_adjust, elastic_transform
 from albumentations.pytorch import ToTensor
+from albumentations.augmentations.transforms import Resize,CenterCrop
+from config import config
 class IndependentRandomBrightnessContrast(A.ImageOnlyTransform):
     """ Change brightness & contrast independently per channels """
 
@@ -40,11 +42,6 @@ def get_light_augmentations(image_size):
             A.RandomGamma(gamma_limit=(75, 125)),
             A.NoOp()
         ]),
-        A.OneOf([
-            ChannelIndependentCLAHE(p=0.5),
-            A.CLAHE(),
-            A.NoOp()
-        ]),
         A.HorizontalFlip(p=0.5),
     ])
 
@@ -74,11 +71,6 @@ def get_medium_augmentations(image_size):
             A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15),
             A.HueSaturationValue(hue_shift_limit=5,
                                  sat_shift_limit=5),
-            A.NoOp()
-        ]),
-        A.OneOf([
-            ChannelIndependentCLAHE(p=0.5),
-            A.CLAHE(),
             A.NoOp()
         ]),
         A.HorizontalFlip(p=0.5),
@@ -228,6 +220,8 @@ def get_train_transform(image_size, augmentation=None):
 
     longest_size = max(image_size[0], image_size[1])
     return A.Compose([
+        #Resize(int(config.img_height*1.5),int(config.img_weight*1.5)),
+        CenterCrop(config.img_height,config.img_weight),
         A.LongestMaxSize(longest_size, interpolation=cv2.INTER_CUBIC),
 
         A.PadIfNeeded(image_size[0], image_size[1],
@@ -241,6 +235,8 @@ def get_train_transform(image_size, augmentation=None):
 def get_test_transform(image_size):
     longest_size = max(image_size[0], image_size[1])
     return A.Compose([
+        #Resize(int(config.img_height*1.5),int(config.img_weight*1.5)),
+        CenterCrop(config.img_height,config.img_weight),
         A.LongestMaxSize(longest_size, interpolation=cv2.INTER_CUBIC),
 
         A.PadIfNeeded(image_size[0], image_size[1],

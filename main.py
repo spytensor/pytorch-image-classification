@@ -143,8 +143,8 @@ def main():
     """
     #train_data_list,val_data_list = train_test_split(origin_files,test_size = 0.1,stratify=origin_files["label"])
     #4.5.4 load dataset
-    train_dataloader = DataLoader(ChaojieDataset(train_data_list),batch_size=config.batch_size,shuffle=True,collate_fn=collate_fn,pin_memory=True)
-    val_dataloader = DataLoader(ChaojieDataset(val_data_list,train=False),batch_size=config.batch_size * 2,shuffle=True,collate_fn=collate_fn,pin_memory=False)
+    train_dataloader = DataLoader(ChaojieDataset(train_data_list),batch_size=config.batch_size,shuffle=True,collate_fn=collate_fn,pin_memory=True,num_workers=4)
+    val_dataloader = DataLoader(ChaojieDataset(val_data_list,train=False),batch_size=config.batch_size * 2,shuffle=True,collate_fn=collate_fn,pin_memory=False,num_workers=4)
     #test_dataloader = DataLoader(ChaojieDataset(test_files,test=True),batch_size=1,shuffle=False,pin_memory=False)
     #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,"max",verbose=1,patience=3)
     scheduler =  optim.lr_scheduler.StepLR(optimizer,step_size = 10,gamma=0.1)

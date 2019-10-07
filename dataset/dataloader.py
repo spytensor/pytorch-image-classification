@@ -39,13 +39,15 @@ class ChaojieDataset(Dataset):
             filename = self.imgs[index]
             img = cv2.imread(filename)
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-            img = get_test_transform(img.shape)(img)["image"]
+            img = cv2.resize(img,(int(config.img_height*1.5),int(config.img_weight*1.5)))
+            img = get_test_transform(img.shape)(image=img)["image"]
             return img,filename
         else:
             filename,label = self.imgs[index] 
             img = cv2.imread(filename)
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-            img = get_train_transform(img.shape,augmentation=config.augmen_level)(img)["image"]
+            img = cv2.resize(img,(int(config.img_height*1.5),int(config.img_weight*1.5)))
+            img = get_train_transform(img.shape,augmentation=config.augmen_level)(image=img)["image"]
             return img,label
     def __len__(self):
         return len(self.imgs)
