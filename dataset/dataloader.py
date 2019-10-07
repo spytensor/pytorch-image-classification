@@ -6,6 +6,7 @@ from dataset.aug import *
 from itertools import chain 
 from glob import glob
 from tqdm import tqdm
+from .augmentations import get_train_transform,get_test_transform
 import random 
 import numpy as np 
 import pandas as pd 
@@ -21,7 +22,7 @@ torch.cuda.manual_seed_all(config.seed)
 
 #2.define dataset
 class ChaojieDataset(Dataset):
-    def __init__(self,label_list,transforms=None,train=True,test=False):
+    def __init__(self,label_list,train=True,test=False):
         self.test = test 
         self.train = train 
         imgs = []
@@ -33,39 +34,19 @@ class ChaojieDataset(Dataset):
             for index,row in label_list.iterrows():
                 imgs.append((row["filename"],row["label"]))
             self.imgs = imgs
-        if transforms is None:
-            if self.test or not self.train:
-                self.transforms = T.Compose([
-                    T.Resize((config.img_weight,config.img_height)),
-                    T.ToTensor(),
-                    T.Normalize(mean = [0.485,0.456,0.406],
-                                std = [0.229,0.224,0.225])])
-            else:
-                self.transforms  = T.Compose([
-                    T.Resize((config.img_weight,config.img_height)),
-                    T.RandomRotation(30),
-                    T.RandomHorizontalFlip(),
-                    T.RandomVerticalFlip(),
-                    T.RandomAffine(45),
-                    T.ToTensor(),
-                    T.Normalize(mean = [0.485,0.456,0.406],
-                                std = [0.229,0.224,0.225])])
-        else:
-            self.transforms = transforms
+
     def __getitem__(self,index):
         if self.test:
             filename = self.imgs[index]
-            #img = cv2.imread(filename)
-            #img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-            img = Image.open(filename)
-            img = self.transforms(img)
+            img = cv2.imread(filename)
+            img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            img = get_test_transform(img.shape)(img)["image"]
             return img,filename
         else:
             filename,label = self.imgs[index] 
-            #img = cv2.imread(filename)
-            #img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
-            img = Image.open(filename)
-            img = self.transforms(img)
+            img = cv2.imread(filename)
+            img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+            img = get_train_transform(img.shape,augmentation=config.augmen_level)(img)["image"]
             return img,label
     def __len__(self):
         return len(self.imgs)

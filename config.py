@@ -9,6 +9,7 @@ class DefaultConfigs(object):
     submit = "./submit/"
     logs = "./logs/"
     gpus = "1"
+    augmen_level = "medium"  # "light","hard","hard2"
 
     #2.numeric parameters
     epochs = 40
