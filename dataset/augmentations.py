@@ -71,7 +71,6 @@ def get_medium_augmentations(image_size):
             A.NoOp()
         ]),
         A.OneOf([
-            FancyPCA(alpha_std=4),
             A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15),
             A.HueSaturationValue(hue_shift_limit=5,
                                  sat_shift_limit=5),
@@ -128,7 +127,6 @@ def get_hard_augmentations(image_size):
         ]),
 
         A.OneOf([
-            FancyPCA(alpha_std=6),
             A.RGBShift(r_shift_limit=40, b_shift_limit=30, g_shift_limit=30),
             A.HueSaturationValue(hue_shift_limit=10,
                                  sat_shift_limit=10),
@@ -186,7 +184,6 @@ def get_hard_augmentations_v2(image_size):
         ]),
 
         A.OneOf([
-            FancyPCA(alpha_std=6),
             A.RGBShift(r_shift_limit=40, b_shift_limit=30, g_shift_limit=30),
             A.HueSaturationValue(hue_shift_limit=10,
                                  sat_shift_limit=10),
