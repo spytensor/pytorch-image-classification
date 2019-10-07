@@ -1,6 +1,10 @@
 # pytorch-image-classification
 use pytorch to do image classfiication tasks 
 
+### 使用方法
+
+移步：[从实例掌握 pytorch 进行图像分类](http://spytensor.com/index.php/archives/21/)
+
 ## 2019.04.28
 add test.py
 
