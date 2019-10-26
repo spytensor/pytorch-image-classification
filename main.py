@@ -37,7 +37,7 @@ def evaluate(val_loader,model,criterion,epoch):
     val_progressor = ProgressBar(mode="Val  ",epoch=epoch,total_epoch=config.epochs,model_name=config.model_name,total=len(val_loader))
     #2.2 switch to evaluate mode and confirm model has been transfered to cuda
     model.cuda()
-    #model.eval()
+    model.eval()
     with torch.no_grad():
         for i,(input,target) in enumerate(val_loader):
             val_progressor.current = i 
