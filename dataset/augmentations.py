@@ -98,7 +98,6 @@ def get_hard_augmentations(image_size):
         ]),
 
         A.OneOf([
-            ZeroTopAndBottom(p=0.3),
 
             A.RandomSizedCrop(min_max_height=(int(image_size[0] * 0.75), image_size[0]),
                               height=image_size[0],
@@ -191,7 +190,6 @@ def get_hard_augmentations_v2(image_size):
         ]),
 
         A.RandomGridShuffle(p=0.3),
-        DiagnosisNoise(p=0.2),
 
         # D4
         A.Compose([
