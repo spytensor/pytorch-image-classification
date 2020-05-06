@@ -6,7 +6,8 @@ use pytorch to do image classfiication tasks
 移步：[从实例掌握 pytorch 进行图像分类](http://spytensor.com/index.php/archives/21/)
 
 ## 2020.05.06
-此代码不在更新维护，请使用最新的(pytorch_img_classification_for_competition)[https://github.com/spytensor/pytorch_img_classification_for_competition]
+此代码不在更新维护，请使用最新的
+[pytorch_img_classification_for_competition](https://github.com/spytensor/pytorch_img_classification_for_competition)
 
 ## 2019.04.28
 add test.py
